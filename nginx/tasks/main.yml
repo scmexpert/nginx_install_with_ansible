@@ -1,0 +1,41 @@
+---
+- name: Update apt-get package
+  apt: upgrade=dist
+
+- name: Add nginx repo
+  apt_repository: repo='ppa:nginx/stable' state=present
+  register: package_added
+
+- name: Install nginx package
+  when: package_added is success
+  apt: package=nginx state=present
+  register: package_installed
+  notify: Start Nginx
+
+- name: Create website folder structure
+  file: dest=/var/www/{{ site_name }}/html mode=755 state=directory 
+  register: create_website_folder
+  notify: Reload Nginx
+
+- name: Copy example webpage to website folder location
+  when: create_website_folder is success
+  copy: 
+    src=index.html 
+    dest=/var/www/{{ site_name }}/html
+  notify: Reload Nginx
+  
+- name: Remove default website
+  file: dest=/etc/nginx/sites-enabled/default/ state=absent
+
+- name: copy template website file
+  template: src=example.com dest=/etc/nginx/sites-available/{{ site_name }}
+
+- name: make available site to enabled state
+  file: 
+    src=/etc/nginx/sites-available/{{ site_name }}
+    dest=/etc/nginx/sites-enabled/{{ site_name }}
+    state=link
+  notify: Reload Nginx
+
+
+  
